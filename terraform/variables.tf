@@ -1,7 +1,7 @@
 variable "aws_region" {
   description = "AWS region for the serverless application."
   type        = string
-  default     = "us-east-1"
+  default     = "ap-south-2"
 }
 
 variable "application_name" {

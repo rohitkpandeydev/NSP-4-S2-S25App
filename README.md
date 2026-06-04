@@ -14,13 +14,17 @@ Serverless backend deployed with Terraform, AWS Lambda, API Gateway HTTP API, Gi
 Create these repository variables:
 
 - `APP_DEPLOY_ROLE_ARN`: output from the bootstrap repository.
-- `AWS_REGION`: optional, defaults to `us-east-1`.
+- `AWS_REGION`: optional, defaults to `ap-south-2`.
 
 Optional repository secret:
 
 - `HUGGINGFACE_API_TOKEN`: enables Hugging Face inference. Without it, the Lambda still calls a free public quote API and returns a simulated assistant response.
 
 No static AWS access keys are required in this repository.
+
+Terraform state is stored in `s3://bits-hw-nsp4-terraform-state/NSP-4-S2-S25App/terraform.tfstate` with native S3 lock files enabled.
+
+The app deployment role created by the bootstrap repository includes the S3 permissions required for this state file and its `.tflock` file.
 
 ## Deployment order
 
