@@ -117,14 +117,20 @@ resource "aws_apigatewayv2_stage" "default" {
   access_log_settings {
     destination_arn = aws_cloudwatch_log_group.api_access.arn
     format = jsonencode({
-      requestId      = "$context.requestId"
-      ip             = "$context.identity.sourceIp"
-      requestTime    = "$context.requestTime"
-      httpMethod     = "$context.httpMethod"
-      routeKey       = "$context.routeKey"
-      status         = "$context.status"
-      protocol       = "$context.protocol"
-      responseLength = "$context.responseLength"
+      requestId                 = "$context.requestId"
+      ip                        = "$context.identity.sourceIp"
+      requestTime               = "$context.requestTime"
+      httpMethod                = "$context.httpMethod"
+      routeKey                  = "$context.routeKey"
+      status                    = "$context.status"
+      protocol                  = "$context.protocol"
+      responseLength            = "$context.responseLength"
+      integrationErrorMessage   = "$context.integrationErrorMessage"
+      integrationStatus         = "$context.integrationStatus"
+      integrationRequestId      = "$context.integration.requestId"
+      integrationLatency        = "$context.integrationLatency"
+      authorizerError           = "$context.authorizer.error"
+      authorizerIntegrationCode = "$context.authorizer.integrationStatus"
     })
   }
 }
@@ -134,5 +140,5 @@ resource "aws_lambda_permission" "api_gateway" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.backend.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.http_api.execution_arn}/*/*"
+  source_arn    = "${aws_apigatewayv2_api.http_api.execution_arn}/*/*/*"
 }
