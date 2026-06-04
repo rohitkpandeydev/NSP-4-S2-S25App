@@ -40,3 +40,9 @@ variable "huggingface_model_url" {
   type        = string
   default     = "https://api-inference.huggingface.co/models/google/flan-t5-small"
 }
+
+variable "lambda_kms_key_arn" {
+  description = "Optional customer-managed KMS key ARN used to encrypt Lambda environment variables."
+  type        = string
+  default     = ""
+}

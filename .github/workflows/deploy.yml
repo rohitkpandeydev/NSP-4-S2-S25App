@@ -62,6 +62,7 @@ jobs:
         working-directory: terraform
         env:
           TF_VAR_huggingface_api_token: ${{ secrets.HUGGINGFACE_API_TOKEN }}
+          TF_VAR_lambda_kms_key_arn: ${{ vars.LAMBDA_KMS_KEY_ARN }}
         run: terraform apply -auto-approve
 
       - name: Print invoke URL

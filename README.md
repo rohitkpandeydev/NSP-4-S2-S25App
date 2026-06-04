@@ -15,6 +15,7 @@ Create these repository variables:
 
 - `APP_DEPLOY_ROLE_ARN`: output from the bootstrap repository.
 - `AWS_REGION`: optional, defaults to `ap-south-2`.
+- `LAMBDA_KMS_KEY_ARN`: optional customer-managed KMS key ARN for Lambda environment variable encryption.
 
 Optional repository secret:
 

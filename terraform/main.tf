@@ -34,6 +34,30 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+data "aws_iam_policy_document" "lambda_kms_decrypt" {
+  count = var.lambda_kms_key_arn == "" ? 0 : 1
+
+  statement {
+    effect = "Allow"
+
+    actions = [
+      "kms:Decrypt",
+    ]
+
+    resources = [
+      var.lambda_kms_key_arn,
+    ]
+  }
+}
+
+resource "aws_iam_role_policy" "lambda_kms_decrypt" {
+  count = var.lambda_kms_key_arn == "" ? 0 : 1
+
+  name   = "${local.normalized_name}-kms-decrypt"
+  role   = aws_iam_role.lambda_execution.id
+  policy = data.aws_iam_policy_document.lambda_kms_decrypt[0].json
+}
+
 # checkov:skip=CKV_AWS_158:CloudWatch Logs uses AWS-managed encryption for this assignment.
 resource "aws_cloudwatch_log_group" "lambda" {
   name              = "/aws/lambda/${local.normalized_name}"
@@ -62,6 +86,7 @@ resource "aws_lambda_function" "backend" {
   source_code_hash = data.archive_file.lambda_package.output_base64sha256
   timeout          = var.lambda_timeout_seconds
   memory_size      = var.lambda_memory_mb
+  kms_key_arn      = var.lambda_kms_key_arn == "" ? null : var.lambda_kms_key_arn
 
   environment {
     variables = {
