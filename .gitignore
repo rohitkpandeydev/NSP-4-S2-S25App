@@ -1,0 +1,12 @@
+.terraform/
+terraform.tfstate
+terraform.tfstate.backup
+*.tfvars
+*.tfplan
+build/
+dist/
+.gocache/
+.gomodcache/
+lambda/.gocache/
+lambda/.gomodcache/
+.DS_Store
