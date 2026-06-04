@@ -35,10 +35,10 @@ variable "huggingface_api_token" {
   sensitive   = true
 }
 
-variable "huggingface_model_url" {
-  description = "Optional Hugging Face model inference URL."
+variable "huggingface_model_id" {
+  description = "Optional Hugging Face model ID used by the router API."
   type        = string
-  default     = "https://api-inference.huggingface.co/models/google/flan-t5-small"
+  default     = "mistralai/Mistral-7B-Instruct-v0.3:fastest"
 }
 
 variable "lambda_kms_key_arn" {

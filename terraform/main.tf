@@ -92,7 +92,7 @@ resource "aws_lambda_function" "backend" {
     variables = {
       APP_NAME              = var.application_name
       HUGGINGFACE_API_TOKEN = var.huggingface_api_token
-      HUGGINGFACE_MODEL_URL = var.huggingface_model_url
+      HUGGINGFACE_MODEL_ID  = var.huggingface_model_id
     }
   }
 

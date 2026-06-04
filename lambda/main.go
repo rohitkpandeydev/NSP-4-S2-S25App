@@ -35,6 +35,24 @@ type hfResponse struct {
 	GeneratedText string `json:"generated_text"`
 }
 
+type routerChatRequest struct {
+	Model    string             `json:"model"`
+	Messages []routerChatMessage `json:"messages"`
+}
+
+type routerChatMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+type routerChatResponse struct {
+	Choices []struct {
+		Message struct {
+			Content string `json:"content"`
+		} `json:"message"`
+	} `json:"choices"`
+}
+
 type quoteResponse struct {
 	Content string `json:"content"`
 	Author  string `json:"author"`
@@ -86,7 +104,7 @@ func parsePayload(body string) (requestPayload, error) {
 func generateAnswer(ctx context.Context, prompt string) (string, string, error) {
 	token := strings.TrimSpace(os.Getenv("HUGGINGFACE_API_TOKEN"))
 	if token != "" {
-		answer, err := queryHuggingFace(ctx, prompt, token)
+		answer, err := queryHuggingFaceRouter(ctx, prompt, token)
 		if err == nil && strings.TrimSpace(answer) != "" {
 			return answer, "huggingface", nil
 		}
@@ -100,18 +118,30 @@ func generateAnswer(ctx context.Context, prompt string) (string, string, error) 
 	return fmt.Sprintf("NSP-4-S2-S25App processed your prompt: %q. Public API context: %q - %s", prompt, quote, author), "quotable", nil
 }
 
-func queryHuggingFace(ctx context.Context, prompt string, token string) (string, error) {
-	modelURL := strings.TrimSpace(os.Getenv("HUGGINGFACE_MODEL_URL"))
-	if modelURL == "" {
-		modelURL = "https://api-inference.huggingface.co/models/google/flan-t5-small"
+func queryHuggingFaceRouter(ctx context.Context, prompt string, token string) (string, error) {
+	modelID := strings.TrimSpace(os.Getenv("HUGGINGFACE_MODEL_ID"))
+	if modelID == "" {
+		modelID = "mistralai/Mistral-7B-Instruct-v0.3:fastest"
 	}
 
-	body, err := json.Marshal(hfRequest{Inputs: prompt})
+	body, err := json.Marshal(routerChatRequest{
+		Model: modelID,
+		Messages: []routerChatMessage{
+			{
+				Role:    "system",
+				Content: "You are the backend for NSP-4-S2-S25App. Reply in one short sentence.",
+			},
+			{
+				Role:    "user",
+				Content: prompt,
+			},
+		},
+	})
 	if err != nil {
 		return "", err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, modelURL, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://router.huggingface.co/v1/chat/completions", bytes.NewReader(body))
 	if err != nil {
 		return "", err
 	}
@@ -131,6 +161,11 @@ func queryHuggingFace(ctx context.Context, prompt string, token string) (string,
 	responseBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
+	}
+
+	var routerResponse routerChatResponse
+	if err := json.Unmarshal(responseBody, &routerResponse); err == nil && len(routerResponse.Choices) > 0 {
+		return strings.TrimSpace(routerResponse.Choices[0].Message.Content), nil
 	}
 
 	var generated []hfResponse
