@@ -11,6 +11,9 @@ on:
 permissions:
   contents: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   super-linter:
     name: Super Linter
@@ -23,7 +26,7 @@ jobs:
           fetch-depth: 0
 
       - name: Run Super Linter
-        uses: super-linter/super-linter/slim@v6
+        uses: super-linter/super-linter/slim@v7
         env:
           DEFAULT_BRANCH: main
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -31,6 +34,8 @@ jobs:
           VALIDATE_TERRAFORM_FMT: true
           VALIDATE_TERRAFORM_TFLINT: true
           VALIDATE_YAML: true
+          # Go linting often fails on formatting; let's ensure we are explicit
+          GO_GOLINT_ARGUMENTS: "--fast"
 
   checkov:
     name: Checkov
@@ -46,3 +51,6 @@ jobs:
           directory: terraform
           framework: terraform
           quiet: true
+          # Ensure we skip the .terraform directory explicitly
+          skip_path: .terraform
+

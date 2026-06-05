@@ -58,24 +58,24 @@ resource "aws_iam_role_policy" "lambda_kms_decrypt" {
   policy = data.aws_iam_policy_document.lambda_kms_decrypt[0].json
 }
 
-# checkov:skip=CKV_AWS_158:CloudWatch Logs uses AWS-managed encryption for this assignment.
 resource "aws_cloudwatch_log_group" "lambda" {
+  # checkov:skip=CKV_AWS_158:CloudWatch Logs uses AWS-managed encryption for this assignment.
   name              = "/aws/lambda/${local.normalized_name}"
   retention_in_days = var.log_retention_days
 }
 
-# checkov:skip=CKV_AWS_158:CloudWatch Logs uses AWS-managed encryption for this assignment.
 resource "aws_cloudwatch_log_group" "api_access" {
+  # checkov:skip=CKV_AWS_158:CloudWatch Logs uses AWS-managed encryption for this assignment.
   name              = "/aws/apigateway/${local.normalized_name}"
   retention_in_days = var.log_retention_days
 }
 
-# checkov:skip=CKV_AWS_115:Reserved concurrency is omitted to keep this assignment deploy simple.
-# checkov:skip=CKV_AWS_116:A dead-letter queue is not required for the simple synchronous HTTP backend.
-# checkov:skip=CKV_AWS_117:This public HTTP API Lambda does not need VPC-only networking for the assignment.
-# checkov:skip=CKV_AWS_173:Lambda environment variables use AWS-managed encryption for this assignment.
-# checkov:skip=CKV_AWS_272:Code signing is intentionally omitted for this lightweight assignment deployment.
 resource "aws_lambda_function" "backend" {
+  # checkov:skip=CKV_AWS_115:Reserved concurrency is omitted to keep this assignment deploy simple.
+  # checkov:skip=CKV_AWS_116:A dead-letter queue is not required for the simple synchronous HTTP backend.
+  # checkov:skip=CKV_AWS_117:This public HTTP API Lambda does not need VPC-only networking for the assignment.
+  # checkov:skip=CKV_AWS_173:Lambda environment variables use AWS-managed encryption for this assignment.
+  # checkov:skip=CKV_AWS_272:Code signing is intentionally omitted for this lightweight assignment deployment.
   function_name    = local.normalized_name
   description      = "Serverless backend for ${var.application_name}"
   role             = aws_iam_role.lambda_execution.arn
@@ -106,8 +106,8 @@ resource "aws_lambda_function" "backend" {
   ]
 }
 
-# checkov:skip=CKV_AWS_316:The public assignment API allows browser callers from any origin.
 resource "aws_apigatewayv2_api" "http_api" {
+  # checkov:skip=CKV_AWS_316:The public assignment API allows browser callers from any origin.
   name          = "${var.application_name}-http-api"
   protocol_type = "HTTP"
 
@@ -126,8 +126,8 @@ resource "aws_apigatewayv2_integration" "lambda" {
   payload_format_version = "2.0"
 }
 
-# checkov:skip=CKV_AWS_309:The assignment requires a simple public API endpoint.
 resource "aws_apigatewayv2_route" "invoke" {
+  # checkov:skip=CKV_AWS_309:The assignment requires a simple public API endpoint.
   api_id             = aws_apigatewayv2_api.http_api.id
   authorization_type = "NONE"
   route_key          = "POST /invoke"

@@ -17,10 +17,12 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
+// RequestPayload defines the input structure for the Lambda function.
 type requestPayload struct {
 	Prompt string `json:"prompt"`
 }
 
+// ResponsePayload defines the output structure for the Lambda function.
 type responsePayload struct {
 	Application string `json:"application"`
 	Prompt      string `json:"prompt"`
@@ -37,7 +39,7 @@ type hfResponse struct {
 }
 
 type routerChatRequest struct {
-	Model    string             `json:"model"`
+	Model    string              `json:"model"`
 	Messages []routerChatMessage `json:"messages"`
 }
 
@@ -61,6 +63,7 @@ type zenQuoteResponse struct {
 
 var httpClient = &http.Client{Timeout: 10 * time.Second}
 
+// Handler is the main Lambda entry point.
 func handler(ctx context.Context, event events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
 	log.Printf("Received request: %s", event.Body)
 
