@@ -54,3 +54,48 @@ jobs:
           # Ensure we skip the .terraform directory explicitly
           skip_path: .terraform
 
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache-dependency-path: lambda/go.sum
+
+      - name: Build Lambda package for Plan
+        working-directory: lambda
+        run: |
+          mkdir -p ../build
+          GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o ../build/bootstrap .
+
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.APP_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'ap-south-2' }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.14.0
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: terraform
+        env:
+          TF_VAR_huggingface_api_token: ${{ secrets.HUGGINGFACE_API_TOKEN }}
+          TF_VAR_lambda_kms_key_arn: ${{ vars.LAMBDA_KMS_KEY_ARN }}
+        run: terraform plan -no-color -input=false
+
