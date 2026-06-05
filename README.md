@@ -16,6 +16,7 @@ Create these repository variables:
 - `APP_DEPLOY_ROLE_ARN`: output from the bootstrap repository.
 - `AWS_REGION`: optional, defaults to `ap-south-2`.
 - `LAMBDA_KMS_KEY_ARN`: optional customer-managed KMS key ARN for Lambda environment variable encryption.
+- `HUGGINGFACE_MODEL_ID`: optional Hugging Face chat model ID. The default is `google/gemma-2-2b-it`.
 
 Optional repository secret:
 

@@ -121,7 +121,7 @@ func generateAnswer(ctx context.Context, prompt string) (string, string, error) 
 func queryHuggingFaceRouter(ctx context.Context, prompt string, token string) (string, error) {
 	modelID := strings.TrimSpace(os.Getenv("HUGGINGFACE_MODEL_ID"))
 	if modelID == "" {
-		modelID = "mistralai/Mistral-7B-Instruct-v0.3:fastest"
+		modelID = "google/gemma-2-2b-it"
 	}
 
 	body, err := json.Marshal(routerChatRequest{
