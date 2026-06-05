@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -53,25 +54,29 @@ type routerChatResponse struct {
 	} `json:"choices"`
 }
 
-type quoteResponse struct {
-	Content string `json:"content"`
-	Author  string `json:"author"`
+type zenQuoteResponse struct {
+	Quote  string `json:"q"`
+	Author string `json:"a"`
 }
 
-var httpClient = &http.Client{Timeout: 8 * time.Second}
+var httpClient = &http.Client{Timeout: 10 * time.Second}
 
 func handler(ctx context.Context, event events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
+	log.Printf("Received request: %s", event.Body)
+
 	if event.RequestContext.HTTP.Method == http.MethodOptions {
 		return apiResponse(http.StatusNoContent, nil)
 	}
 
 	payload, err := parsePayload(event.Body)
 	if err != nil {
+		log.Printf("Error parsing payload: %v", err)
 		return apiResponse(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
 	answer, source, err := generateAnswer(ctx, payload.Prompt)
 	if err != nil {
+		log.Printf("Error generating answer: %v", err)
 		return apiResponse(http.StatusBadGateway, map[string]string{"error": err.Error()})
 	}
 
@@ -104,18 +109,24 @@ func parsePayload(body string) (requestPayload, error) {
 func generateAnswer(ctx context.Context, prompt string) (string, string, error) {
 	token := strings.TrimSpace(os.Getenv("HUGGINGFACE_API_TOKEN"))
 	if token != "" {
+		log.Printf("Attempting Hugging Face Router API call...")
 		answer, err := queryHuggingFaceRouter(ctx, prompt, token)
 		if err == nil && strings.TrimSpace(answer) != "" {
 			return answer, "huggingface", nil
 		}
+		log.Printf("Hugging Face API failed or returned empty: %v", err)
+	} else {
+		log.Printf("HUGGINGFACE_API_TOKEN is not set, skipping HF.")
 	}
 
+	log.Printf("Attempting fallback to ZenQuotes API...")
 	quote, author, err := fetchQuote(ctx)
 	if err != nil {
+		log.Printf("Fallback API (ZenQuotes) also failed: %v", err)
 		return fmt.Sprintf("NSP-4-S2-S25App processed: %s", prompt), "local-fallback", nil
 	}
 
-	return fmt.Sprintf("NSP-4-S2-S25App processed your prompt: %q. Public API context: %q - %s", prompt, quote, author), "quotable", nil
+	return fmt.Sprintf("NSP-4-S2-S25App processed your prompt: %q. Public API context: %q - %s", prompt, quote, author), "zenquotes", nil
 }
 
 func queryHuggingFaceRouter(ctx context.Context, prompt string, token string) (string, error) {
@@ -155,7 +166,8 @@ func queryHuggingFaceRouter(ctx context.Context, prompt string, token string) (s
 	defer resp.Body.Close()
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return "", fmt.Errorf("hugging face returned HTTP %d", resp.StatusCode)
+		respBody, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("hugging face returned HTTP %d: %s", resp.StatusCode, string(respBody))
 	}
 
 	responseBody, err := io.ReadAll(resp.Body)
@@ -173,16 +185,12 @@ func queryHuggingFaceRouter(ctx context.Context, prompt string, token string) (s
 		return generated[0].GeneratedText, nil
 	}
 
-	var single hfResponse
-	if err := json.Unmarshal(responseBody, &single); err == nil {
-		return single.GeneratedText, nil
-	}
-
-	return "", errors.New("unexpected Hugging Face response")
+	return "", errors.New("unexpected Hugging Face response format")
 }
 
 func fetchQuote(ctx context.Context) (string, string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.quotable.io/random", nil)
+	// ZenQuotes API is generally more stable than Quotable.
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://zenquotes.io/api/random", nil)
 	if err != nil {
 		return "", "", err
 	}
@@ -193,16 +201,20 @@ func fetchQuote(ctx context.Context) (string, string, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return "", "", fmt.Errorf("quote API returned HTTP %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		return "", "", fmt.Errorf("zenquotes API returned HTTP %d", resp.StatusCode)
 	}
 
-	var quote quoteResponse
-	if err := json.NewDecoder(resp.Body).Decode(&quote); err != nil {
+	var quotes []zenQuoteResponse
+	if err := json.NewDecoder(resp.Body).Decode(&quotes); err != nil {
 		return "", "", err
 	}
 
-	return quote.Content, quote.Author, nil
+	if len(quotes) == 0 {
+		return "", "", errors.New("zenquotes returned an empty array")
+	}
+
+	return quotes[0].Quote, quotes[0].Author, nil
 }
 
 func apiResponse(statusCode int, body interface{}) (events.APIGatewayV2HTTPResponse, error) {
