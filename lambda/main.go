@@ -112,15 +112,15 @@ func parsePayload(body string) (requestPayload, error) {
 func generateAnswer(ctx context.Context, prompt string) (string, string, error) {
 	token := strings.TrimSpace(os.Getenv("HUGGINGFACE_API_TOKEN"))
 	if token != "" {
-		// Tier 1: Standard Inference API (Most features, but sometimes DNS issues in niche regions)
-		log.Printf("Attempting Hugging Face Standard Inference API...")
-		answer, err := queryHuggingFace(ctx, "https://api-inference.huggingface.co", prompt, token)
+		// Tier 1: Standard Inference API via .hf.co alias (Bypasses DNS issues with .huggingface.co in some regions)
+		log.Printf("Attempting Hugging Face Standard Inference API (hf.co)...")
+		answer, err := queryHuggingFace(ctx, "https://api-inference.hf.co", prompt, token)
 		if err == nil && strings.TrimSpace(answer) != "" {
 			return answer, "huggingface-standard", nil
 		}
-		log.Printf("Standard Inference API failed: %v", err)
+		log.Printf("Standard Inference API (hf.co) failed: %v", err)
 
-		// Tier 2: Inference Router (More stable DNS resolution, supports partner providers)
+		// Tier 2: Inference Router (Failover)
 		log.Printf("Attempting Hugging Face Inference Router (Failover)...")
 		answer, err = queryHuggingFace(ctx, "https://router.huggingface.co", prompt, token)
 		if err == nil && strings.TrimSpace(answer) != "" {
