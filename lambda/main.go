@@ -124,18 +124,25 @@ func generateAnswer(ctx context.Context, prompt string) (string, string, error) 
 
 	log.Printf("Attempting fallback to ZenQuotes API...")
 	quote, author, err := fetchQuote(ctx)
-	if err != nil {
-		log.Printf("Fallback API (ZenQuotes) also failed: %v", err)
-		return fmt.Sprintf("NSP-4-S2-S25App processed: %s", prompt), "local-fallback", nil
+	if err == nil {
+		return fmt.Sprintf("NSP-4-S2-S25App processed your prompt: %q. Public API context: %q - %s", prompt, quote, author), "zenquotes", nil
 	}
+	log.Printf("Fallback API (ZenQuotes) also failed: %v", err)
 
-	return fmt.Sprintf("NSP-4-S2-S25App processed your prompt: %q. Public API context: %q - %s", prompt, quote, author), "zenquotes", nil
+	log.Printf("Attempting second fallback to Typefit API...")
+	quote, err = fetchTypefitQuote(ctx)
+	if err == nil {
+		return fmt.Sprintf("NSP-4-S2-S25App processed: %q. Secondary fallback context: %q", prompt, quote), "typefit", nil
+	}
+	log.Printf("Second fallback API (Typefit) also failed: %v", err)
+
+	return fmt.Sprintf("NSP-4-S2-S25App processed: %s. (Note: All external LLM and quote APIs were unavailable)", prompt), "local-fallback", nil
 }
 
 func queryHuggingFaceRouter(ctx context.Context, prompt string, token string) (string, error) {
 	modelID := strings.TrimSpace(os.Getenv("HUGGINGFACE_MODEL_ID"))
 	if modelID == "" {
-		modelID = "google/gemma-2-2b-it"
+		modelID = "mistralai/Mistral-7B-Instruct-v0.3"
 	}
 
 	body, err := json.Marshal(routerChatRequest{
@@ -189,6 +196,28 @@ func queryHuggingFaceRouter(ctx context.Context, prompt string, token string) (s
 	}
 
 	return "", errors.New("unexpected Hugging Face response format")
+}
+
+func fetchTypefitQuote(ctx context.Context) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://type.fit/api/quotes", nil)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	var quotes []struct {
+		Text string `json:"text"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&quotes); err != nil || len(quotes) == 0 {
+		return "", errors.New("failed to parse typefit quotes")
+	}
+
+	return quotes[0].Text, nil
 }
 
 func fetchQuote(ctx context.Context) (string, string, error) {
