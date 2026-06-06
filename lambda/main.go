@@ -151,12 +151,23 @@ func generateAnswer(ctx context.Context, prompt string) (string, string, error) 
 func queryHuggingFace(ctx context.Context, baseURL string, prompt string, token string) (string, error) {
 	modelID := strings.TrimSpace(os.Getenv("HUGGINGFACE_MODEL_ID"))
 	if modelID == "" {
-		modelID = "mistralai/Mistral-7B-Instruct-v0.2"
+		modelID = "microsoft/Phi-3-mini-4k-instruct"
 	}
 
-	// Use OpenAI-compatible chat completions path which is standard for both endpoints
-	apiURL := fmt.Sprintf("%s/v1/chat/completions", baseURL)
+	// Try OpenAI-compatible path first (preferred for chat models)
+	chatURL := fmt.Sprintf("%s/v1/chat/completions", baseURL)
+	answer, err := tryChatCompletion(ctx, chatURL, modelID, prompt, token)
+	if err == nil {
+		return answer, nil
+	}
+	log.Printf("Chat Completion path failed for %s: %v", baseURL, err)
 
+	// Tier 2: Try standard task-based Inference API (more reliable for some models/accounts)
+	taskURL := fmt.Sprintf("%s/models/%s", baseURL, modelID)
+	return tryTaskInference(ctx, taskURL, prompt, token)
+}
+
+func tryChatCompletion(ctx context.Context, apiURL string, modelID string, prompt string, token string) (string, error) {
 	body, err := json.Marshal(routerChatRequest{
 		Model: modelID,
 		Messages: []routerChatMessage{
@@ -174,13 +185,27 @@ func queryHuggingFace(ctx context.Context, baseURL string, prompt string, token 
 		return "", err
 	}
 
+	return performHFRequest(ctx, apiURL, body, token, true)
+}
+
+func tryTaskInference(ctx context.Context, apiURL string, prompt string, token string) (string, error) {
+	body, err := json.Marshal(map[string]string{
+		"inputs": fmt.Sprintf("Instruct: You are the backend for NSP-4-S2-S25App. Reply in one short sentence to the following prompt.\nPrompt: %s\nOutput:", prompt),
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return performHFRequest(ctx, apiURL, body, token, false)
+}
+
+func performHFRequest(ctx context.Context, apiURL string, body []byte, token string, isChat bool) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, bytes.NewReader(body))
 	if err != nil {
 		return "", err
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
-	// Header to wait for model if it's currently loading (cold start)
 	req.Header.Set("x-wait-for-model", "true")
 
 	resp, err := httpClient.Do(req)
@@ -189,19 +214,30 @@ func queryHuggingFace(ctx context.Context, baseURL string, prompt string, token 
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		respBody, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(respBody))
-	}
-
-	responseBody, err := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
 
-	var routerResponse routerChatResponse
-	if err := json.Unmarshal(responseBody, &routerResponse); err == nil && len(routerResponse.Choices) > 0 {
-		return strings.TrimSpace(routerResponse.Choices[0].Message.Content), nil
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return "", fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	if isChat {
+		var routerResponse routerChatResponse
+		if err := json.Unmarshal(respBody, &routerResponse); err == nil && len(routerResponse.Choices) > 0 {
+			return strings.TrimSpace(routerResponse.Choices[0].Message.Content), nil
+		}
+	} else {
+		// Standard task API returns a list or a single object
+		var taskResp []hfResponse
+		if err := json.Unmarshal(respBody, &taskResp); err == nil && len(taskResp) > 0 {
+			return strings.TrimSpace(taskResp[0].GeneratedText), nil
+		}
+		var singleResp hfResponse
+		if err := json.Unmarshal(respBody, &singleResp); err == nil {
+			return strings.TrimSpace(singleResp.GeneratedText), nil
+		}
 	}
 
 	return "", errors.New("unexpected response format")
