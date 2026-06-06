@@ -112,21 +112,21 @@ func parsePayload(body string) (requestPayload, error) {
 func generateAnswer(ctx context.Context, prompt string) (string, string, error) {
 	token := strings.TrimSpace(os.Getenv("HUGGINGFACE_API_TOKEN"))
 	if token != "" {
-		// Tier 1: Standard Inference API via .hf.co alias (Bypasses DNS issues with .huggingface.co in some regions)
-		log.Printf("Attempting Hugging Face Standard Inference API (hf.co)...")
-		answer, err := queryHuggingFace(ctx, "https://api-inference.hf.co", prompt, token)
-		if err == nil && strings.TrimSpace(answer) != "" {
-			return answer, "huggingface-standard", nil
-		}
-		log.Printf("Standard Inference API (hf.co) failed: %v", err)
-
-		// Tier 2: Inference Router (Failover)
-		log.Printf("Attempting Hugging Face Inference Router (Failover)...")
-		answer, err = queryHuggingFace(ctx, "https://router.huggingface.co", prompt, token)
+		// Tier 1: Hugging Face Router (Proven to work with DeepSeek-V4-Flash)
+		log.Printf("Attempting Hugging Face Inference Router...")
+		answer, err := queryHuggingFace(ctx, "https://router.huggingface.co", prompt, token)
 		if err == nil && strings.TrimSpace(answer) != "" {
 			return answer, "huggingface-router", nil
 		}
 		log.Printf("Inference Router failed: %v", err)
+
+		// Tier 2: Standard Inference API (Backup alias hf.co)
+		log.Printf("Attempting Hugging Face Standard Inference API (hf.co)...")
+		answer, err = queryHuggingFace(ctx, "https://api-inference.hf.co", prompt, token)
+		if err == nil && strings.TrimSpace(answer) != "" {
+			return answer, "huggingface-standard", nil
+		}
+		log.Printf("Standard Inference API (hf.co) failed: %v", err)
 	} else {
 		log.Printf("HUGGINGFACE_API_TOKEN is not set, skipping HF.")
 	}
@@ -151,7 +151,7 @@ func generateAnswer(ctx context.Context, prompt string) (string, string, error) 
 func queryHuggingFace(ctx context.Context, baseURL string, prompt string, token string) (string, error) {
 	modelID := strings.TrimSpace(os.Getenv("HUGGINGFACE_MODEL_ID"))
 	if modelID == "" {
-		modelID = "microsoft/Phi-3-mini-4k-instruct"
+		modelID = "deepseek-ai/DeepSeek-V4-Flash:novita"
 	}
 
 	// Try OpenAI-compatible path first (preferred for chat models)
