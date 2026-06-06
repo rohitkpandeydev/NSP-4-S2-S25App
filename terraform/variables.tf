@@ -38,7 +38,7 @@ variable "huggingface_api_token" {
 variable "huggingface_model_id" {
   description = "Optional Hugging Face model ID used by the router API."
   type        = string
-  default     = "meta-llama/Llama-3.2-1B-Instruct"
+  default     = "mistralai/Mistral-7B-Instruct-v0.3"
 }
 
 variable "lambda_kms_key_arn" {
