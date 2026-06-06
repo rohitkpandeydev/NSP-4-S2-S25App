@@ -38,7 +38,7 @@ variable "huggingface_api_token" {
 variable "huggingface_model_id" {
   description = "Optional Hugging Face model ID used by the router API."
   type        = string
-  default     = "mistralai/Mistral-7B-Instruct-v0.3"
+  default     = "mistralai/Mistral-7B-Instruct-v0.2"
 }
 
 variable "lambda_kms_key_arn" {
