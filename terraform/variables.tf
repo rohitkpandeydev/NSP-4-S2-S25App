@@ -38,7 +38,7 @@ variable "huggingface_api_token" {
 variable "huggingface_model_id" {
   description = "Optional Hugging Face model ID used by the router API."
   type        = string
-  default     = "microsoft/Phi-3-mini-4k-instruct"
+  default     = "deepseek-ai/DeepSeek-V4-Flash:novita"
 }
 
 variable "lambda_kms_key_arn" {
