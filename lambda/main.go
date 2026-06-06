@@ -112,8 +112,9 @@ func parsePayload(body string) (requestPayload, error) {
 func generateAnswer(ctx context.Context, prompt string) (string, string, error) {
 	token := strings.TrimSpace(os.Getenv("HUGGINGFACE_API_TOKEN"))
 	if token != "" {
-		log.Printf("Attempting Hugging Face Router API call...")
-		answer, err := queryHuggingFaceRouter(ctx, prompt, token)
+		log.Printf("Attempting Hugging Face Inference API call...")
+		// Using the standard Inference API which is more reliable for free-tier tokens
+		answer, err := queryHuggingFaceInference(ctx, prompt, token)
 		if err == nil && strings.TrimSpace(answer) != "" {
 			return answer, "huggingface", nil
 		}
@@ -139,11 +140,14 @@ func generateAnswer(ctx context.Context, prompt string) (string, string, error) 
 	return fmt.Sprintf("NSP-4-S2-S25App processed: %s. (Note: All external LLM and quote APIs were unavailable)", prompt), "local-fallback", nil
 }
 
-func queryHuggingFaceRouter(ctx context.Context, prompt string, token string) (string, error) {
+func queryHuggingFaceInference(ctx context.Context, prompt string, token string) (string, error) {
 	modelID := strings.TrimSpace(os.Getenv("HUGGINGFACE_MODEL_ID"))
 	if modelID == "" {
 		modelID = "mistralai/Mistral-7B-Instruct-v0.3"
 	}
+
+	// Standard Inference API endpoint for chat models
+	apiURL := fmt.Sprintf("https://api-inference.huggingface.co/models/%s/v1/chat/completions", modelID)
 
 	body, err := json.Marshal(routerChatRequest{
 		Model: modelID,
@@ -162,7 +166,7 @@ func queryHuggingFaceRouter(ctx context.Context, prompt string, token string) (s
 		return "", err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://router.huggingface.co/v1/chat/completions", bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, bytes.NewReader(body))
 	if err != nil {
 		return "", err
 	}
@@ -177,6 +181,7 @@ func queryHuggingFaceRouter(ctx context.Context, prompt string, token string) (s
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		respBody, _ := io.ReadAll(resp.Body)
+		// If the model is loading, we might get a 503. Log it specifically.
 		return "", fmt.Errorf("hugging face returned HTTP %d: %s", resp.StatusCode, string(respBody))
 	}
 
@@ -188,11 +193,6 @@ func queryHuggingFaceRouter(ctx context.Context, prompt string, token string) (s
 	var routerResponse routerChatResponse
 	if err := json.Unmarshal(responseBody, &routerResponse); err == nil && len(routerResponse.Choices) > 0 {
 		return strings.TrimSpace(routerResponse.Choices[0].Message.Content), nil
-	}
-
-	var generated []hfResponse
-	if err := json.Unmarshal(responseBody, &generated); err == nil && len(generated) > 0 {
-		return generated[0].GeneratedText, nil
 	}
 
 	return "", errors.New("unexpected Hugging Face response format")
