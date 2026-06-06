@@ -84,7 +84,7 @@ func handler(ctx context.Context, event events.APIGatewayV2HTTPRequest) (events.
 	}
 
 	return apiResponse(http.StatusOK, responsePayload{
-		Application: "NSP-4-S2-S25App",
+		Application: "NSP-4-S2-S25App - v1.1",
 		Prompt:      payload.Prompt,
 		Response:    answer,
 		Source:      source,
