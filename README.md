@@ -18,10 +18,6 @@ Create these repository variables:
 - `LAMBDA_KMS_KEY_ARN`: optional customer-managed KMS key ARN for Lambda environment variable encryption.
 - `HUGGINGFACE_MODEL_ID`: optional Hugging Face chat model ID. The default is `google/gemma-2-2b-it`.
 
-Optional repository secret:
-
-- `HUGGINGFACE_API_TOKEN`: enables Hugging Face inference. Without it, the Lambda still calls a free public quote API and returns a simulated assistant response.
-
 No static AWS access keys are required in this repository.
 
 Terraform state is stored in `s3://bits-hw-nsp4-terraform-state/NSP-4-S2-S25App/terraform.tfstate` with native S3 lock files enabled.
