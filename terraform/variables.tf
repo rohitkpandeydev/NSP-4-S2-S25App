@@ -38,7 +38,7 @@ variable "huggingface_api_token" {
 variable "huggingface_model_id" {
   description = "Optional Hugging Face model ID used by the router API."
   type        = string
-  default     = "deepseek-ai/DeepSeek-V4-Flash:novita"
+  default     = "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-NVFP4:together"
 }
 
 variable "lambda_kms_key_arn" {
