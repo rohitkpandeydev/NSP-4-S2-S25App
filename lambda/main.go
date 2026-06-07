@@ -64,7 +64,10 @@ type zenQuoteResponse struct {
 var httpClient = &http.Client{Timeout: 10 * time.Second}
 
 // Handler is the main Lambda entry point.
-func handler(ctx context.Context, event events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
+func handler(
+	ctx context.Context,
+	event events.APIGatewayV2HTTPRequest,
+) (events.APIGatewayV2HTTPResponse, error) {
 	log.Printf("Received request: %s", event.Body)
 
 	if event.RequestContext.HTTP.Method == http.MethodOptions {
@@ -134,24 +137,41 @@ func generateAnswer(ctx context.Context, prompt string) (string, string, error) 
 	log.Printf("Attempting fallback to ZenQuotes API...")
 	quote, author, err := fetchQuote(ctx)
 	if err == nil {
-		return fmt.Sprintf("NSP-4-S2-S25App processed your prompt: %q. Public API context: %q - %s", prompt, quote, author), "zenquotes", nil
+		return fmt.Sprintf(
+			"NSP-4-S2-S25App processed your prompt: %q. Public API context: %q - %s",
+			prompt,
+			quote,
+			author,
+		), "zenquotes", nil
 	}
 	log.Printf("Fallback API (ZenQuotes) also failed: %v", err)
 
 	log.Printf("Attempting second fallback to Typefit API...")
 	quote, err = fetchTypefitQuote(ctx)
 	if err == nil {
-		return fmt.Sprintf("NSP-4-S2-S25App processed: %q. Secondary fallback context: %q", prompt, quote), "typefit", nil
+		return fmt.Sprintf(
+			"NSP-4-S2-S25App processed: %q. Secondary fallback context: %q",
+			prompt,
+			quote,
+		), "typefit", nil
 	}
 	log.Printf("Second fallback API (Typefit) also failed: %v", err)
 
-	return fmt.Sprintf("NSP-4-S2-S25App processed: %s. (Note: All external LLM and quote APIs were unavailable)", prompt), "local-fallback", nil
+	return fmt.Sprintf(
+		"NSP-4-S2-S25App processed: %s. (Note: All external LLM and quote APIs were unavailable)",
+		prompt,
+	), "local-fallback", nil
 }
 
-func queryHuggingFace(ctx context.Context, baseURL string, prompt string, token string) (string, error) {
+func queryHuggingFace(
+	ctx context.Context,
+	baseURL string,
+	prompt string,
+	token string,
+) (string, error) {
 	modelID := strings.TrimSpace(os.Getenv("HUGGINGFACE_MODEL_ID"))
 	if modelID == "" {
-		modelID = "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-NVFP4:together"
+		modelID = "deepseek-ai/DeepSeek-V4-Flash:novita"
 	}
 
 	// Try OpenAI-compatible path first (preferred for chat models)
@@ -167,7 +187,13 @@ func queryHuggingFace(ctx context.Context, baseURL string, prompt string, token 
 	return tryTaskInference(ctx, taskURL, prompt, token)
 }
 
-func tryChatCompletion(ctx context.Context, apiURL string, modelID string, prompt string, token string) (string, error) {
+func tryChatCompletion(
+	ctx context.Context,
+	apiURL string,
+	modelID string,
+	prompt string,
+	token string,
+) (string, error) {
 	body, err := json.Marshal(routerChatRequest{
 		Model: modelID,
 		Messages: []routerChatMessage{
@@ -188,9 +214,17 @@ func tryChatCompletion(ctx context.Context, apiURL string, modelID string, promp
 	return performHFRequest(ctx, apiURL, body, token, true)
 }
 
-func tryTaskInference(ctx context.Context, apiURL string, prompt string, token string) (string, error) {
+func tryTaskInference(
+	ctx context.Context,
+	apiURL string,
+	prompt string,
+	token string,
+) (string, error) {
 	body, err := json.Marshal(map[string]string{
-		"inputs": fmt.Sprintf("Instruct: You are the backend for NSP-4-S2-S25App. Reply in one short sentence to the following prompt.\nPrompt: %s\nOutput:", prompt),
+		"inputs": fmt.Sprintf(
+			"Instruct: You are the backend for NSP-4-S2-S25App. Reply in one short sentence to the following prompt.\nPrompt: %s\nOutput:",
+			prompt,
+		),
 	})
 	if err != nil {
 		return "", err
@@ -199,7 +233,13 @@ func tryTaskInference(ctx context.Context, apiURL string, prompt string, token s
 	return performHFRequest(ctx, apiURL, body, token, false)
 }
 
-func performHFRequest(ctx context.Context, apiURL string, body []byte, token string, isChat bool) (string, error) {
+func performHFRequest(
+	ctx context.Context,
+	apiURL string,
+	body []byte,
+	token string,
+	isChat bool,
+) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, bytes.NewReader(body))
 	if err != nil {
 		return "", err
@@ -225,7 +265,8 @@ func performHFRequest(ctx context.Context, apiURL string, body []byte, token str
 
 	if isChat {
 		var routerResponse routerChatResponse
-		if err := json.Unmarshal(respBody, &routerResponse); err == nil && len(routerResponse.Choices) > 0 {
+		if err := json.Unmarshal(respBody, &routerResponse); err == nil &&
+			len(routerResponse.Choices) > 0 {
 			return strings.TrimSpace(routerResponse.Choices[0].Message.Content), nil
 		}
 	} else {
@@ -267,7 +308,12 @@ func fetchTypefitQuote(ctx context.Context) (string, error) {
 
 func fetchQuote(ctx context.Context) (string, string, error) {
 	// ZenQuotes API is generally more stable than Quotable.
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://zenquotes.io/api/random", nil)
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		"https://zenquotes.io/api/random",
+		nil,
+	)
 	if err != nil {
 		return "", "", err
 	}

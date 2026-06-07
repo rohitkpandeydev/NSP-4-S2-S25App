@@ -2,8 +2,8 @@
 
 # Configuration
 INVOKE_URL="https://fux17srgoh.execute-api.ap-south-2.amazonaws.com/invoke"
-DURATION=60  # How long to run the test (seconds)
-INTERVAL=2   # Interval between requests (seconds)
+DURATION=180  # How long to run the test (seconds)
+INTERVAL=5   # Interval between requests (seconds)
 
 echo "----------------------------------------------------------------"
 echo "NSP-4-S2-S25App API Reliability & Performance Test"
