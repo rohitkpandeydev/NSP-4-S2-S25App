@@ -1,4 +1,4 @@
-module github.com/rohitkpandeydev/NSP-4-S2-S25App/lambda
+module github.com/serverless-titans/NSP-4-S2-S25App/lambda
 
 go 1.22
 
