@@ -171,7 +171,7 @@ func queryHuggingFace(
 ) (string, error) {
 	modelID := strings.TrimSpace(os.Getenv("HUGGINGFACE_MODEL_ID"))
 	if modelID == "" {
-		modelID = "deepseek-ai/DeepSeek-V4-Flash:novita"
+		modelID = "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-NVFP4:together"
 	}
 
 	// Try OpenAI-compatible path first (preferred for chat models)
