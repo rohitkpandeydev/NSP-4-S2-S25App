@@ -171,7 +171,7 @@ func queryHuggingFace(
 ) (string, error) {
 	modelID := strings.TrimSpace(os.Getenv("HUGGINGFACE_MODEL_ID"))
 	if modelID == "" {
-		return "", errors.New("HUGGINGFACE_MODEL_ID environment variable is not set")
+		modelID = "deepseek-ai/DeepSeek-V4-Flash:novita"
 	}
 
 	// Try OpenAI-compatible path first (preferred for chat models)
